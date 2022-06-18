@@ -85,4 +85,259 @@ fn main() {
     // - Copy 트레이트가 적용된 타입을 포함하는 튜플.
     // 즉 (i32, i32)는 가능, (i32, String)는 불가능.
 
+
+    // 변수 s가 범위 내에 생성된다.
+    let s = String::from("hello");
+
+    // 변수 s의 값이 함수 내로 이동한다.
+    // 그리고 이 시점부터 변수 s는 더 이상 유효하지 않다.
+    takes_ownership(s);
+
+    // 변수 x가 범위 내에 생성된다.
+    // 변수 x의 값이 함수 내로 이동한다.
+    // 하지만 i32 타입은 복사를 수행하므로
+    // 변수 x는 이 시점 이후로도 여전히 유효하다.
+    let x = 5;
+
+    makes_copy(x);
 }
+// 이 지점에서 변수 x가 범위를 벗어난 후, 다음으로 변수 s도 범위를 벗어난다.
+// 하지만 변수 s의 값은 함수 내로 이동했기 때문에 아무런 일도 일어나지 않는다.
+
+// some_string 변수가 범위 내에 생성된다.
+fn takes_ownership(some_string: String) {
+    println!("{}", some_string);
+}
+// 이 지점에서 some_string 변수가 범위를 벗어나며 drop 함수가 호출된다.
+// 따라서 some_string 변수가 사용 중이던 메모리가 해제된다.
+
+// some_integer 변수가 범위 내에 생성된다.
+fn makes_copy(some_integer: i32) {
+    println!("{}", some_integer);
+}
+// 이 지점에서 some_integer 변수가 범위를 벗어난다.
+// 하지만 아무런 일도 일어나지 않는다.
+
+fn main() {
+    // gives_ownership 함수의 리턴값이 변수 s1으로 옮겨진다.
+    let s1 = gives_ownership();
+
+    // 변수 s2가 범위 내에 생성된다.
+    let s2 = String::from("hello");
+
+    // 변수 s2가 takes_and_gives_back 함수로 옮겨간 후 리턴값은 변수 s3으로 옮겨진다.
+    let s3 = takes_and_gives_back(s2);
+}
+// 이 시점에서 변수 s3이 범위를 벗어나며 drop 함수가 호출된다.
+// 변수 s2 역시 범위를 벗어나지만
+// takes_and_gives_back 함수로 옮겨졌기 때문에 아무 일도 일어나지 않는다.
+// 변수 s1 역시 범위를 벗어날 때 drop 함수가 호출된다.
+
+// gives_ownership 함수의 리턴값은 호출한 함수로 옮겨진다.
+fn gives_ownership() -> String {
+    // 변수 some_string이 범위 내에 생성된다.
+    let some_string = String::from("hello");
+
+    // some_string 변수가 리턴되면 호출한 함수로 옮겨진다.
+    some_string
+}
+
+// takes_and_gives_back 함수는 String 인수를 전달받아 그 값을 다시 리턴한다.
+// 변수 a_string이 범위 내에 생성된다.
+fn takes_and_gives_back(a_string: String) -> String {
+    // 변수 a_string을 리턴하면 그 값이 호출한 함수로 옮겨진다.
+    a_string
+}
+
+// 변수의 소유권은 매번 같은 패턴을 따른다. 즉, 값을 다른 변수에 할당하면 소유권이 옮겨진다.
+// 힙 메모리에 저장된 변수의 데이터는 소유권이 다른 변수로 옮겨지지 않았다면
+// 범위를 벗어날 때 drop 함수에 의해 제거된다.
+
+// 모든 함수가 소유권을 확보하고 다시 리턴하는 방식의 동작은 다소 거추장스럽다.
+// 함수에 값을 전달할 때 소유권은 이전하고 싶지 않다면 어떻게 해야 할까?
+fn main() {
+    let s1 = String::from("hello");
+
+    let (s2, len) = calculate_length(s1);
+
+    println!("'{}'의 길이는 {}입니다.", s2, len);
+}
+
+fn calculate_length(s: String) -> (String, usize) {
+    let length = s.len();
+
+    (s, length)
+}
+// 튜플을 이용한 이런 방식이 있을 수 있지만 보편적으로 사용하기에 복잡하다.
+// 러스트는 이를 위해 참조(references)라는 개념을 지원한다.
+
+// & 기호가 참조(references)이다.
+// 이를 이용하면 소유권을 가져오지 않고도 값을 참조할 수 있다.
+// * 는 역참조(dereferencing)이다.
+fn main() {
+    let s1 = String::from("hello");
+
+    // &s1 문법을 이용하면 변수 s1의 값을 읽을 수 있지만 소유권은 가져오지 않는 참조를 생성할 수
+    // 있다.
+    // 참조는 소유권을 갖지 않기 때문에 참조가 가리키는 값은 참조가 범위를 벗어나더라도 drop 함수가
+    // 호출되지 않는다.
+    let len = calculate_length(&s1);
+
+    println!("'{}'의 길이는 {}입니다.", s1, len);
+}
+
+// 매개변수 s는 String에 대한 참조다.
+fn calculate_length(s: &String) -> usize {
+    s.len()
+}
+// 이 시점에서 변수가 s가 범위를 벗어난다.
+// 하지만 이 변수는 자신이 가리키는 값에 대한 소유권이 없으므로 아무 일도 일어나지 않는다.
+// 이처럼 함수 매개변수로 참조를 전달하는 것을 대여(borrowing)라고 한다.
+
+fn main() {
+    let s = String::from("hello");
+
+    change(&s);
+}
+
+fn change(some_string: &String) {
+    some_string.push_str(", world");
+}
+// 변수가 기본적으로 불변인 것처럼 참조도 기본적으로 불변이다. 이를 사용하기 위해선 mut를
+// 추가해야한다.
+
+// 이를 가변 참조라 한다.
+fn main() {
+    let mut s = String::from("hello");
+
+    change(&mut s);
+}
+
+fn change(some_string: &mut String) {
+    some_string.push_str(", world");
+}
+
+// 가변 참조에는 한 가지 제약이 있다. 특정 범위 내의 특정 데이터에 대한 가변 참조는 오직 한 개만
+// 존재해야 한다.
+// 다음의 코드는 오류를 발생한다.
+fn main() {
+    let mut s = String::from("hello");
+
+    let r1 = &mut s;
+    let r2 = &mut s;
+    println!("{}, {}", r1, r2);
+}
+
+// 이런 제약 덕분에 러스트는 데이터 경합(data races)을 컴파일 시점에 방지 할 수 있다.
+// 데이터 경합은 경합 조건과 유사하며 주로 3가지 경우에 발생한다.
+// - 둘 혹은 그 이상의 포인터가 동시에 같은 데이터를 읽거나 쓰기 위해 접근할 때
+// - 최소한 하나의 포인터가 데이터를 쓰기 위해 사용될 때
+// - 데이터에 대한 접근을 동기화할 수 있는 메커니즘이 없을 때
+
+// 중괄호를 잘 이용하면 여러 개의 가변 참조를 활용할 수 있다.
+fn main() {
+    let mut s = String::from("hello");
+
+    {
+        let r1 = &mut s;
+    }
+
+    let r2 = &mut s;
+}
+
+// 다음 예제를 보자
+fn main() {
+    let mut s = String::from("hello");
+
+    let r1 = &s; // ok
+    let r2 = &s; // ok
+    let re = &mut s; // 에러 발생
+    println!("{}, {}, and {}", r1, r2, r3);
+}
+// 불변 참조를 이미 사용 중일 때도 가변 참조를 생성할 수 없다.
+// 어딘가에서 이미 불변 참조를 생성했다면 그 값을 변경해서는 안 되기 때문이다.
+// 반면, 데이터를 읽는 동작은 다른 사용자가 데이터를 읽는 동작에 아무런 영향을 주지 않으므로
+// 불변 참조는 여러 개를 생성해도 무방하다.
+
+// 포인터를 사용하는 언어는 죽은 포인터로 인해 에러가 발생하기가 쉽다.
+// 죽은 포인터란, 이미 해제되어 다른 정보를 저장하도록 변경된 메모리를 계속해서 참조하는 포인터를
+// 말한다.
+// 러스트는 죽은 참조가 발생하지 않도록 컴파일러가 보장한다.
+// 즉, 어떤 데이터에 대한 참조를 생성하면 컴파일러가 해당 데이터에 대한 참조를 실행하기에 앞서
+// 데이터가 범위를 벗어나지 않았는지를 확인해 준다.
+fn main() {
+    let reference_to_nothing = dangle();
+}
+
+// dangle 함수는 String에 대한 참조를 리턴한다.
+fn dangle() -> &String {
+    // String 타입의 새로운 변수 s를 생성한다.
+    let s = String::from("hello");
+
+    // String 타입의 변수 s에 대한 참조를 리턴한다.
+    // 하지만 이 지점에서 변수 s가 범위를 벗어나므로 drop 함수가 호출되고 메모리가 해제된다.
+    // 따라서 이 함수는 에러의 위험을 내포하고 있다.
+    &s
+}
+// 러스트에서는 절대 허용되지 않는다
+
+// 이 문제에 대한 해결은 다음과 같다
+fn no_dangle() -> String {
+    let s = String::from("hello");
+
+    s
+}
+// 변수 s의 소유권이 함수를 호출한 코드로 이동하기 때문에 메모리가 해제되지 않는다.
+
+// 참조에 대한 규칙
+// - 어느 한 시점에 코드는 하나의 가변 참조 또는 여러 개의 불변 참조를 생성할 수 는 있지만,
+// 둘 모두를 생성할 수는 없다.
+// - 참조는 항상 유효해야 한다.
+
+// 조금 다른 형태의 참조인 슬라이스가 있다.
+// 슬라이스도 소유권을 갖지 않는 타입이다. 슬라이스를 이용하면 컬렉션 전체가 아니라
+// 컬렉션 내의 연속된 요소들을 참조할 수 있다.
+
+// 문자열 슬라이스(string slices)는 String의 일부에 대한 참조이다.
+fn main() {
+    let s = String::from("hello world");
+
+    let hello = &s[0..5];
+    let world = &s[6..11];
+}
+// 이렇게하면 문자열 중 지정된 부분에 대한 참조만을 얻게 된다.
+
+fn frist_word(s: &String) -> &str {
+    let bytes = s.as_bytes();
+
+    for (i, &item) in bytes.iter().enumerate() {
+        if item == b' ' {
+            return &s[0..i];
+        }
+    }
+
+    &s[..]
+}
+
+// 문자열 리터럴은 슬라이스다.
+let s = "Hello, world!";
+// 변수 s의 타입은 &str이다. 즉, 바이너리의 어느 한 지점을 가리키는 슬라이스이다. 
+// 따라서 문자열 리터럴은 항상 불변이다. &str이 불변 참조이기 때문이다.
+
+// 리터럴이나 String 타입의 값으로부터 슬라이스를 생성할 수 있다.
+// String 타입에 대한 참조 대신 문자열 슬라이스를 함수의 매개변수로 사용하면 더 보편적일 수 있다.
+//
+fn main() {
+    let my_string = String::from("hello world");
+
+    let word = first_word(&my_string[..]);
+
+    let my_string_literal = "hello world";
+
+    let word = frist_word(&my_string_literal[..]);
+
+    let word = frist_word(my_string_literal);
+}
+
+// 소유권, 대여, 슬라이스는 러스트 프로그램의 컴파일 시점에 메모리 안정성을 확보하기 위한
+// 개념들이다.
